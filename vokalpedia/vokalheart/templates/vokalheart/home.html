@@ -1,0 +1,32 @@
+{% extends 'base.html' %} {% block content %} {%load static%}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width" />
+
+    <title>L'application Simplon E1: Florent Vanhollebeke</title>
+
+    <link rel="stylesheet" href="{% static 'style.css' %}" />
+  </head>
+
+  <body>
+    <p>Vous êtes connecté !</p>
+    <h1>
+      Bienvenue sur votre navigateur de reconnaissance et synthèse vocales.
+    </h1>
+
+    <button>Cliquez ici pour démarrer.</button>
+
+    <div>
+      <p class="outputPred"></p>
+      <p class="outputConfidence"></p>
+    </div>
+
+    <script src="{% static 'js_old.js' %}"></script>
+  </body>
+</html>
+
+{% endblock content %}

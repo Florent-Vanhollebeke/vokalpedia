@@ -1,0 +1,78 @@
+# https://pypi.org/project/Wikipedia-API/
+
+
+from bs4 import BeautifulSoup
+import re
+import wikipediaapi
+import wikipedia
+from text_to_speech_azure import *
+
+wiki_wiki = wikipediaapi.Wikipedia('fr')
+wikipedia.set_lang("fr")
+
+theme = input("Quel thème souhaitez-vous consulter?")
+
+html_page = wikipedia.page(theme).html()
+page_py = wiki_wiki.page(theme)
+
+
+liste_complete_sommaire = []
+liste_reduite_sommaire_h2 = []
+
+def print_sections_h2(sections, level=0):
+    for s in sections:
+        liste_reduite_sommaire_h2.append(s.title)
+    return liste_reduite_sommaire_h2
+
+def print_sections_complet(sections, level=0):
+    for s in sections:
+        liste_complete_sommaire.append(s.title)
+        print_sections_complet(s.sections)
+    return liste_complete_sommaire
+
+section_traitee = input("Souhaitez-avoir l'intégralité des titres du sommaire ou seulement les grands titres? Veuillez dire 'sommaire intégral' ou 'grands titres'  ")
+
+sommaire = ""
+
+try:
+    if section_traitee == "sommaire intégral":
+        sommaire = print_sections_complet(page_py.sections)
+    else:
+        sommaire = print_sections_h2(page_py.sections)
+except Exception as err:
+    print(f"Unexpected {err}, {type(err)}")
+
+sommaire = "".join(str(sommaire))
+
+try:
+    speech_synthesis_with_auto_language_detection_to_speaker(str(sommaire),theme)
+except Exception as err:
+    print(f"Unexpected {err}, {type(err)}")
+
+
+try:
+    if page_py.exists():
+
+        soup = BeautifulSoup(html_page,"lxml")
+        content_table = soup.findAll("span", {"class": "toctext"})
+        content_table_clean = []
+        for x in content_table:
+            content_table_clean.append(x.text)
+            
+        menu_nav = content_table_clean[1]
+        menu_nav = re.sub(r'\s+',' ',menu_nav)
+
+        saisie = input("Quelle section souhaitez-vous consulter?")
+
+        # côté wikipediapai
+        section_asked = page_py.section_by_title(saisie)
+        print(section_asked)
+        print(type(section_asked))
+        text_to_transform = str(section_asked)
+        speech_synthesis_with_auto_language_detection_to_speaker(text_to_transform,theme)
+
+    else:
+        print("La page demandée n'existe pas.")
+
+except Exception as err:
+    print(f"Unexpected {err}, {type(err)}")
