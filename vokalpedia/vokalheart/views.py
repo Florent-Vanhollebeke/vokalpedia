@@ -18,6 +18,7 @@ from vokalheart.utils.text_to_speech_azure import speech_synthesis_with_auto_lan
 import os
 import json
 import re
+import datetime
 import wikipediaapi
 import wikipedia
 
@@ -79,65 +80,64 @@ def home(request):
 
 @login_required
 def wikispeech(request):
-
     if request.method == 'POST':
-
         username = request.POST.get('username')
         data = json.loads(request.body)
+        print(data)
         prediction = data['prediction']
         accessoire = data['predAccessoire']
 
-        html_page = wikipedia.page(prediction).html()
-        page_py = wiki_wiki.page(prediction)
+        try:
+            html_page = wikipedia.page(f'{prediction}').html()
+            page_py = wiki_wiki.page(f'{prediction}')
+        except Exception as err:
+            print(f"Unexpected {err}, {type(err)}")
 
         # si l'utilisateur demande à obtenir la lecture de la page complète
         if re.search(r"lecture", accessoire):
-            resultat = json.dumps(page_py.text)
-
-            #return render(request, 'vokalheart/home.html', context=resultat)
+            resultat = {"lecture": json.dumps(page_py.text)}
             return JsonResponse(resultat)
-
 
         # si l'utilisateur demande à obtenir le sommaire complet, on lui retourne le sommaire complet
         elif re.search(r"sommaire", accessoire):
             section_traitee = "sommaire"
-            val_retour = Navigation_sommaire_wikipedia(page_py.sections,section_traitee)
+            val_retour = Navigation_sommaire_wikipedia(page_py.sections, section_traitee)
             val_retour.nav_wiki()
             sommaire = val_retour.sommaire
             sommaire = sommaire.replace("""[\'""","""[\"""").replace("""\', \'""","""\", \"""").replace("""\']""","""\"]""").replace("""\', \"""","""\", \"""").replace("""\", \'""","""\", \"""")
 
-            user = User.objects.get(username=username)
-            previous_search = PreviousSearch.objects.filter(user_owner=user,previous_search_text__icontains=prediction).values("previous_search_text")
+            # user = User.objects.get(username=username)
+            # previous_search = PreviousSearch.objects.filter(user_owner=user, previous_search_text__icontains=prediction).values("previous_search_text")
 
-            for i,v in enumerate(previous_search):
-                if previous_search[i]['previous_search_text'] == prediction:
-                    previous_search_id = previous_search.previous_id
-                    print(previous_search_id)
-                    pred_to_send = TextToSpeechPrediction.objects.get(previous_id=previous_search_id)
-                    print(pred_to_send)
+            # for i, v in enumerate(previous_search):
+            #     if previous_search[i]['previous_search_text'] == prediction:
+            #         previous_search_id = previous_search[i]['previous_id']
+            #         print(previous_search_id)
+            #         pred_to_send = TextToSpeechPrediction.objects.get(previous_id=previous_search_id)
+            #         print(pred_to_send)
                     # il faut faire le return du fichier dans la BDD 
 
             try:
-                speech_synthesis_with_auto_language_detection_to_speaker(str(sommaire),prediction)
+                now = datetime.datetime.now()
+                timestamp = now.strftime("%Y%m%d_%H%M%S")
+                speech_synthesis_with_auto_language_detection_to_speaker(str(sommaire),prediction,timestamp)
             except Exception as err:
                 print(f"Unexpected {err}, {type(err)}")
 
-            chemin_fichier = os.path.join(settings.MEDIA_ROOT, f"{prediction}_{timestamp}.wav")
+            filename = f"{prediction}_{timestamp}.wav"
+            chemin_fichier = os.path.join(settings.MEDIA_ROOT, filename)
             # Ouverture du fichier WAV
             with open(chemin_fichier, 'rb') as fichier_wav:
                 # Lecture du contenu du fichier WAV
                 contenu_wav = fichier_wav.read()
 
-            filename="{prediction}_{timestamp}.wav"
-            file = filename.startswith(prediction)
+            filename = f"{prediction}_{timestamp}.wav"
 
             # Création d'une réponse HTTP contenant le contenu du fichier WAV
             response = HttpResponse(content=contenu_wav, content_type='audio/wav')
-            response['Content-Disposition'] = f'attachment; filename="{file}"'
-
-            # Rendre le template HTML en y incluant la réponse HTTP
-            context = {'fichier_wav': response}
-            return render(request, 'vokalheart/home.html', context)
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            
+            return response
 
             # return render(request,'vokalheart/home.html', context=sommaire)
 
@@ -150,13 +150,32 @@ def wikispeech(request):
             sommaire = sommaire.replace("""[\'""","""[\"""").replace("""\', \'""","""\", \"""").replace("""\']""","""\"]""").replace("""\', \"""","""\", \"""").replace("""\", \'""","""\", \"""")
 
             try:
-                speech_synthesis_with_auto_language_detection_to_speaker(str(sommaire),prediction)
+                now = datetime.datetime.now()
+                timestamp = now.strftime("%Y%m%d_%H%M%S")
+                speech_synthesis_with_auto_language_detection_to_speaker(str(sommaire),prediction,timestamp)
             except Exception as err:
                 print(f"Unexpected {err}, {type(err)}")
 
-            return render(request, 'vokalheart/home.html', context=sommaire)
+            filename = f"{prediction}_{timestamp}.wav"
+            chemin_fichier = os.path.join(settings.MEDIA_ROOT, filename)
+            # Ouverture du fichier WAV
+            contenu_wav = b''
+            try:
+                with open(chemin_fichier, 'rb') as fichier_wav:
+                    contenu_wav = fichier_wav.read()
+            except Exception as err:
+                print(f"Unexpected {err}, {type(err)}")
+
+            filename = f"{prediction}_{timestamp}.wav"
+
+            # Création d'une réponse HTTP contenant le contenu du fichier WAV
+            response = HttpResponse(content=contenu_wav, content_type='audio/wav')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            
+            return response
+
         
-        elif re.search(r"aide", prediction):
+        elif re.search(r"aide", accessoire):
             help_text = """Voici quelques conseils pour utiliser Vokalpédia. L'application fonctionne sur un enchainement de clics qui se comprenne comme un cycle. 
             D'abord, cliquez une première fois sur le boutton, cela permet de demander le thème recherché. 
             Par exemple, recherche bayonne permettra d'aller sur la page wikipédia de bayonne. 
@@ -166,12 +185,33 @@ def wikispeech(request):
             En revanche, si vous dites section, alors vous n'obtiendrez que les grandes sections du sommaire. 
             Enfin, pour lire le contenu d'une section du sommaire, il conviendra de cliquer en demandant le thème suivi du nom de la section."""
 
-            try:
-                speech_synthesis_with_auto_language_detection_to_speaker(help_text,prediction)
-            except Exception as err:
-                print(f"Unexpected {err}, {type(err)}")
+            # try:
+            #     now = datetime.datetime.now()
+            #     timestamp = now.strftime("%Y%m%d_%H%M%S")
+            #     speech_synthesis_with_auto_language_detection_to_speaker(help_text,prediction,timestamp)
+            # except Exception as err:
+            #     print(f"Unexpected {err}, {type(err)}")
 
-            return render(request, 'vokalheart/home.html', context=help_text)
+            # filename = f"{prediction}_{timestamp}.wav"
+            # chemin_fichier = os.path.join(settings.MEDIA_ROOT, filename)
+            # # Ouverture du fichier WAV
+            # contenu_wav = b''
+            # try:
+            #     with open(chemin_fichier, 'rb') as fichier_wav:
+            #         contenu_wav = fichier_wav.read()
+            # except Exception as err:
+            #     print(f"Unexpected {err}, {type(err)}")
+
+            # filename = f"{prediction}_{timestamp}.wav"
+
+            # # Création d'une réponse HTTP contenant le contenu du fichier WAV
+            # response = HttpResponse(content=contenu_wav, content_type='audio/wav')
+            # response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            
+            # return response
+        
+            resultat = {"Aide": json.dumps(help_text)}
+            return JsonResponse(resultat)
 
         # cela permet de récupérer le souhait de l'utilisateur après avoir entendu le sommaire et ne lui renvoyer que l'article de la page qui l'intéresse.
         else:

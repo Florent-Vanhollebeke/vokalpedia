@@ -5,12 +5,11 @@ import datetime
 speech_key=""
 service_region="francecentral"
 
-def speech_synthesis_with_auto_language_detection_to_speaker(text,search):
+def speech_synthesis_with_auto_language_detection_to_speaker(text,search,timestamp):
     """performs speech synthesis to the default speaker with auto language detection
        Note: this is a preview feature, which might be updated in future versions."""
 
-    now = datetime.datetime.today()
-    timestamp = datetime.datetime.timestamp(now)
+    timestamp = timestamp
 
     speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
 
@@ -26,4 +25,4 @@ def speech_synthesis_with_auto_language_detection_to_speaker(text,search):
     if result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
             print("Speech synthesized to speaker for text [{}]".format(text))
             stream = speechsdk.AudioDataStream(result)
-            stream.save_to_wav_file(f"{search}_{timestamp}.wav")
+            stream.save_to_wav_file(f"media/{search}_{timestamp}.wav")

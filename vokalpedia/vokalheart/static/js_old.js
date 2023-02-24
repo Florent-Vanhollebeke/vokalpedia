@@ -117,10 +117,10 @@ const openSpeech = () => {
 
     let speech = new SpeechSynthesisUtterance();
     speech.lang = "fr";
-    speech.text = "Vokalpedia, dites aide ou prononcer votre demande.";
+    speech.text = "Vokalpedia, dites recherche aide ou prononcer votre demande.";
     console.log(speech.text);
     voices = window.speechSynthesis.getVoices();
-    speech.voice = voices[1];
+    speech.voice = voices[0];
     speech.onend = () => {
         dispatchEvent(new Event('FIN_INTRO'));
     }
@@ -162,7 +162,7 @@ const getSpeechOnLive = () => {
             speech.text = "Vous souhaitez consulter : " + speechResult.replaceAll("recherche", "");
             console.log(speech.text);
             voices = window.speechSynthesis.getVoices();
-            speech.voice = voices[1];
+            ;
             window.speechSynthesis.speak(speech);
             speechResult = getChoiceWithRegex(speechResult);
             window.dispatchEvent(new Event("tabSpeechResultWithRegex"));
@@ -175,7 +175,7 @@ const getSpeechOnLive = () => {
             speech.text = "Vous avez dit :" + strUcFirst(speechResult);
             console.log(speech.text);
             voices = window.speechSynthesis.getVoices();
-            speech.voice = voices[1];
+            speech.voice = voices[0];
             window.speechSynthesis.speak(speech);
             window.dispatchEvent(new Event("tabSpeechResult"));
         }

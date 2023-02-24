@@ -2,13 +2,15 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.db import models
 
+from .managers import UserManager
 
 from datetime import datetime
 
 
 class User(AbstractUser):
     birth_date = models.DateField(null=True, blank=True)
-
+    
+    objects = UserManager()
 
 class PreviousSearch(models.Model):
     # Modèle des recherches déjà effectuées par l'utilisateur
