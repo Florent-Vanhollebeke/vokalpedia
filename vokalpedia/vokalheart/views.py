@@ -4,28 +4,39 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
 from django.conf import settings
 from django.http import JsonResponse, HttpResponse, HttpResponseNotAllowed
 
 
 from . import forms
-from vokalheart.models import PreviousSearch, TextToSpeechPrediction, ImageCaptioningPrediction
+from vokalheart.models import *
 
 from vokalheart.utils.class_wikipedia import Navigation_sommaire_wikipedia
 from vokalheart.utils.text_to_speech_azure import speech_synthesis_with_auto_language_detection_to_speaker
+from vokalheart.utils.image_captioning_azure import image_captioning_azure
+from vokalheart.utils.wiki_fonctions_processing import wiki_navigation_processing, wiki_help_processing, wiki_image_processing, wiki_article_processing
 
 import os
 import json
 import re
 import datetime
+import time
 import wikipediaapi
 import wikipedia
+from bs4 import BeautifulSoup
+from random import *
 
 
 
 wiki_wiki = wikipediaapi.Wikipedia('fr')
 wikipedia.set_lang("fr")
+
+User = get_user_model()
+
+
+
 
 
 @ensure_csrf_cookie
@@ -80,152 +91,69 @@ def home(request):
 
 @login_required
 def wikispeech(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        data = json.loads(request.body)
-        print(data)
-        prediction = data['prediction']
-        accessoire = data['predAccessoire']
 
+    if request.method == 'POST':
+
+        user = request.user
+        data = json.loads(request.body)
+        data_prediction = data['prediction']
+        theme = data_prediction.split(" ")[1]
+        
         try:
-            html_page = wikipedia.page(f'{prediction}').html()
-            page_py = wiki_wiki.page(f'{prediction}')
+            html_page = wikipedia.page(f'{theme}').html()
+            page_py = wiki_wiki.page(f'{theme}')
         except Exception as err:
             print(f"Unexpected {err}, {type(err)}")
 
         # si l'utilisateur demande à obtenir la lecture de la page complète
-        if re.search(r"lecture", accessoire):
+        if re.search(r"lecture", data_prediction):
+
             resultat = {"lecture": json.dumps(page_py.text)}
+
             return JsonResponse(resultat)
+
 
         # si l'utilisateur demande à obtenir le sommaire complet, on lui retourne le sommaire complet
-        elif re.search(r"sommaire", accessoire):
-            section_traitee = "sommaire"
-            val_retour = Navigation_sommaire_wikipedia(page_py.sections, section_traitee)
-            val_retour.nav_wiki()
-            sommaire = val_retour.sommaire
-            sommaire = sommaire.replace("""[\'""","""[\"""").replace("""\', \'""","""\", \"""").replace("""\']""","""\"]""").replace("""\', \"""","""\", \"""").replace("""\", \'""","""\", \"""")
-
-            # user = User.objects.get(username=username)
-            # previous_search = PreviousSearch.objects.filter(user_owner=user, previous_search_text__icontains=prediction).values("previous_search_text")
-
-            # for i, v in enumerate(previous_search):
-            #     if previous_search[i]['previous_search_text'] == prediction:
-            #         previous_search_id = previous_search[i]['previous_id']
-            #         print(previous_search_id)
-            #         pred_to_send = TextToSpeechPrediction.objects.get(previous_id=previous_search_id)
-            #         print(pred_to_send)
-                    # il faut faire le return du fichier dans la BDD 
-
-            try:
-                now = datetime.datetime.now()
-                timestamp = now.strftime("%Y%m%d_%H%M%S")
-                speech_synthesis_with_auto_language_detection_to_speaker(str(sommaire),prediction,timestamp)
-            except Exception as err:
-                print(f"Unexpected {err}, {type(err)}")
-
-            filename = f"{prediction}_{timestamp}.wav"
-            chemin_fichier = os.path.join(settings.MEDIA_ROOT, filename)
-            # Ouverture du fichier WAV
-            with open(chemin_fichier, 'rb') as fichier_wav:
-                # Lecture du contenu du fichier WAV
-                contenu_wav = fichier_wav.read()
-
-            filename = f"{prediction}_{timestamp}.wav"
-
-            # Création d'une réponse HTTP contenant le contenu du fichier WAV
-            response = HttpResponse(content=contenu_wav, content_type='audio/wav')
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        elif re.search(r"sommaire", data_prediction):
             
-            return response
+            section_traitee = "sommaire"
+            response = wiki_navigation_processing(user=user,theme=theme,section_traitee=section_traitee,page_py=page_py)
 
-            # return render(request,'vokalheart/home.html', context=sommaire)
+            return JsonResponse(response)
+
 
         # si l'utilisateur demande à obtenir seulement les grandes sections, on ne lui retourne que les grandes sections
-        elif re.search(r"section", accessoire):
+        elif re.search(r"section", data_prediction):
+       
             section_traitee = "section"
-            val_retour = Navigation_sommaire_wikipedia(page_py.sections,section_traitee)
-            val_retour.nav_wiki()
-            sommaire = val_retour.sommaire
-            sommaire = sommaire.replace("""[\'""","""[\"""").replace("""\', \'""","""\", \"""").replace("""\']""","""\"]""").replace("""\', \"""","""\", \"""").replace("""\", \'""","""\", \"""")
+            response = wiki_navigation_processing(user=user,theme=theme,section_traitee=section_traitee,page_py=page_py)
 
-            try:
-                now = datetime.datetime.now()
-                timestamp = now.strftime("%Y%m%d_%H%M%S")
-                speech_synthesis_with_auto_language_detection_to_speaker(str(sommaire),prediction,timestamp)
-            except Exception as err:
-                print(f"Unexpected {err}, {type(err)}")
-
-            filename = f"{prediction}_{timestamp}.wav"
-            chemin_fichier = os.path.join(settings.MEDIA_ROOT, filename)
-            # Ouverture du fichier WAV
-            contenu_wav = b''
-            try:
-                with open(chemin_fichier, 'rb') as fichier_wav:
-                    contenu_wav = fichier_wav.read()
-            except Exception as err:
-                print(f"Unexpected {err}, {type(err)}")
-
-            filename = f"{prediction}_{timestamp}.wav"
-
-            # Création d'une réponse HTTP contenant le contenu du fichier WAV
-            response = HttpResponse(content=contenu_wav, content_type='audio/wav')
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            
-            return response
-
+            return JsonResponse(response)
         
-        elif re.search(r"aide", accessoire):
-            help_text = """Voici quelques conseils pour utiliser Vokalpédia. L'application fonctionne sur un enchainement de clics qui se comprenne comme un cycle. 
-            D'abord, cliquez une première fois sur le boutton, cela permet de demander le thème recherché. 
-            Par exemple, recherche bayonne permettra d'aller sur la page wikipédia de bayonne. 
-            Le second clic sur le boutton permet de préciser la demande sur le contenu désiré dans la page avec trois méthodes: lecture, sommaire et section. 
-            Si vous dites lecture, cela permet de lire l'intégralité de la page depuis le début.
-            Si vous dites sommaire, vous obtiendrez l'intégralité du sommaire avec toutes ses sous-sections incluses. 
-            En revanche, si vous dites section, alors vous n'obtiendrez que les grandes sections du sommaire. 
-            Enfin, pour lire le contenu d'une section du sommaire, il conviendra de cliquer en demandant le thème suivi du nom de la section."""
 
-            # try:
-            #     now = datetime.datetime.now()
-            #     timestamp = now.strftime("%Y%m%d_%H%M%S")
-            #     speech_synthesis_with_auto_language_detection_to_speaker(help_text,prediction,timestamp)
-            # except Exception as err:
-            #     print(f"Unexpected {err}, {type(err)}")
-
-            # filename = f"{prediction}_{timestamp}.wav"
-            # chemin_fichier = os.path.join(settings.MEDIA_ROOT, filename)
-            # # Ouverture du fichier WAV
-            # contenu_wav = b''
-            # try:
-            #     with open(chemin_fichier, 'rb') as fichier_wav:
-            #         contenu_wav = fichier_wav.read()
-            # except Exception as err:
-            #     print(f"Unexpected {err}, {type(err)}")
-
-            # filename = f"{prediction}_{timestamp}.wav"
-
-            # # Création d'une réponse HTTP contenant le contenu du fichier WAV
-            # response = HttpResponse(content=contenu_wav, content_type='audio/wav')
-            # response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        # retourne l'aide à l'utilisation de l'application 
+        elif re.search(r"aide", data_prediction):
             
-            # return response
+            section_traitee = "aide"
+            response = wiki_help_processing(user=user,theme=theme, section_traitee=section_traitee)
         
-            resultat = {"Aide": json.dumps(help_text)}
-            return JsonResponse(resultat)
+            return JsonResponse(response)
+        
+
+        # retourne la description de trois images aléatoires 
+        elif re.search(r"image", data_prediction):
+
+            section_traitee = "image"
+            response = wiki_image_processing(user=user,theme=theme,section_traitee=section_traitee)
+        
+            return JsonResponse(response)
 
         # cela permet de récupérer le souhait de l'utilisateur après avoir entendu le sommaire et ne lui renvoyer que l'article de la page qui l'intéresse.
         else:
-            val_retour = json.dumps("coucou test")
 
-            return render(request,'vokalheart/home.html', context=val_retour)
+            response = wiki_article_processing(user=user,data_prediction=data_prediction,theme=theme,section_traitee=section_traitee,page_py=page_py,html_page=html_page)
+
+            return JsonResponse(response)
         
     else:
         return HttpResponseNotAllowed(['POST'])
-
-    
-
-
-
-
-
-

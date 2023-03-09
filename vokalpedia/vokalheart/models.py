@@ -1,3 +1,4 @@
+import django
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.db import models
@@ -6,45 +7,31 @@ from .managers import UserManager
 
 from datetime import datetime
 
-
 class User(AbstractUser):
     birth_date = models.DateField(null=True, blank=True)
     
     objects = UserManager()
 
-class PreviousSearch(models.Model):
-    # Modèle des recherches déjà effectuées par l'utilisateur
-    previous_search_text = models.CharField(max_length=254)
-    user_owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+# liaison 1 à 1 avec SpeechResult
+class Search(models.Model):
+    text = models.CharField(max_length=254)
+    type = models.CharField(max_length=254,default="")
     date = models.DateTimeField(auto_now_add=True)
-    previous_id = models.IntegerField()
 
     def __str__(self):
-        return self.previous_search_text
+        return self.text
 
+# liaison n à n avec User et avec Search
+class UserSearch(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    search = models.ForeignKey(Search, on_delete=models.CASCADE)
 
-class TextToSpeechPrediction(models.Model):
-    # Modèle de la prédiction audio résultant du text to speech
-    audio_track_prediction = models.FileField(
-        upload_to=f"{settings.MEDIA_ROOT}/{datetime.now()}")
-    audio_name = models.CharField(max_length=30)
-    user_owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    previous_id = models.ForeignKey(PreviousSearch, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return self.audio_name
-
-
-class ImageCaptioningPrediction(models.Model):
-    # Modèle de la prédiction écrite résultant de la description d'images
-    text_prediction = models.CharField(max_length=254)
-    user_owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    previous_id = models.ForeignKey(PreviousSearch, on_delete=models.CASCADE)
+# liaison 1 à 1 avec Search
+class SpeechResult(models.Model):
+    search = models.OneToOneField(Search,on_delete=models.CASCADE, null=True)
+    file_name = models.CharField(max_length=254)
+    file_path = models.CharField(max_length=254)
 
     def __str__(self):
-        return self.text_prediction
+        return self.file_name

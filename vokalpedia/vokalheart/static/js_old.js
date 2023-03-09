@@ -8,29 +8,29 @@ recognition.grammars = speechRecognitionList;
 recognition.interimResults = false;
 recognition.continuous = true;
 recognition.lang = 'fr-FR';
-
+let reader
 const launchBtn = document.querySelector('button');
 let outputPred = document.querySelector('.outputPred');
 let outputConfidence = document.querySelector('.outputConfidence');
 
 let tabSpeech = [];
 let global_prediction = "";
-let demandeAccessoire = "" ;
-let dataToDjango = { "prediction": "" ,
-                     "predAccessoire": "",
-                    };
-let global_prediction_split;
-let csrfToken = {'csrfToken': "" }
+
+let dataToDjango = {
+    "prediction": "",
+};
+let csrfToken = { 'csrfToken': "" }
+
 
 
 const token = () => {
     fetch('/get_csrf_token')
-  .then(response => response.json())
-  .then(data => {
-    csrfToken = data.csrfToken;
-    // Utiliser le token CSRF dans les requêtes POST, PUT, PATCH ou DELETE
-  })
-  .catch(error => console.error('Erreur:', error));
+        .then(response => response.json())
+        .then(data => {
+            csrfToken = data.csrfToken;
+            // Utiliser le token CSRF dans les requêtes POST, PUT, PATCH ou DELETE
+        })
+        .catch(error => console.error('Erreur:', error));
 };
 
 token_recup = token()
@@ -44,66 +44,42 @@ function strUcFirst(a) {
 
 // Fonction de regex servant à récupérer la prédiction issue de getSpeechOnLive en ignorant le mot recherche encadrant la demande.
 const getChoiceWithRegex = str => {
-    // const regex = /recherche (.+)sommaire (.+)/m;
-    const regex = /recherche (.+) /gm;
-    let m;
-    let resultat;
-    while ((m = regex.exec(str)) !== null) {
-        // This is necessary to avoid infinite loops with zero-width matches
-        if (m.index === regex.lastIndex) {
-            regex.lastIndex++;
-        }
-        // The result can be accessed through the `m`-variable.
-        m.forEach((match, groupIndex) => {
-            console.log(`Found match, group ${groupIndex}: ${match}`);
-            resultat = m.length > 1 ? m[1] : "Aucun thème trouvé";
-        });
-        resultat = m.length > 1 ? m[1] : "Aucun thème trouvé";
+    const regex = /recherche\s+(.+)/i;
+    const match = regex.exec(str);
+    if (match && match[1]) {
+        return match[1].trim();
+    } else {
+        return "Aucun thème trouvé";
     }
-    return (resultat);
 }
 
 
 // Fonction servant à obtenir la prédiction issue de getSpeechOnLive. Nous récupérons le dernier indice d'un tableau nommé tabSpeech valorisé dans la fonction getSpeechOnLive. Un switch est utilisé en utilisant deux écouteurs d'événements, selon que le mot recherche ait ou non été dit dans la prédiction.
 const getPredSpeech = evt => {
     // ajout 21/02:
-    window.dispatchEvent(new Event("ENVOI"));
+    console.log("EVENT getPredSpeech")
     window.removeEventListener("tabSpeechResult", postDataToDjango);
     window.removeEventListener("tabSpeechResultWithRegex", postDataToDjango);
-
+    let global_prediction = "";
     let retour;
-    let accompagnement;
+
     switch (evt.type) {
         case "tabSpeechResultWithRegex":
-            // global_prediction = retour = getChoiceWithRegex(tabSpeech[tabSpeech.length - 2]);
-            global_prediction = retour = tabSpeech[tabSpeech.length - 2];
-            demandeAccessoire = accompagnement = getChoiceWithRegex(tabSpeech[tabSpeech.length - 1]);
+            global_prediction = retour = tabSpeech[tabSpeech.length - 1];
             break;
         case "tabSpeechResult":
-            global_prediction = retour = tabSpeech[tabSpeech.length - 2];
-            demandeAccessoire = accompagnement = tabSpeech[tabSpeech.length - 1];
+            global_prediction = retour = tabSpeech[tabSpeech.length - 1];
             break;
         default:
             console.log("Event non reconnu")
             break;
     }
-    global_prediction_split = global_prediction.split(" ");
-    // console.log(global_prediction_split)
-    // global_prediction_split = global_prediction_split.reverse();
-    // console.log(global_prediction_split)
-    // global_prediction_split = global_prediction_split.join(" ");
-    // console.log(global_prediction_split)
-    // console.log("élement du tableau: " ,global_prediction_split[1])
-    dataToDjango = { 
-        "prediction": strUcFirst(global_prediction_split[1]),
-        // "predAccessoire": strUcFirst(demandeAccessoire),
-        "predAccessoire": demandeAccessoire,  
+
+    dataToDjango = {
+        "prediction": strUcFirst(global_prediction),
     };
-    console.log("La global_prediction est : ", global_prediction);
-    console.log("La demandeAccessoire est : ", demandeAccessoire);
-    console.log("Le retour est : ", retour);
-    console.log("L'accompagnement est : ", accompagnement);
     console.log("le json à envoyer est :", dataToDjango);
+    window.dispatchEvent(new Event("ENVOI"));
 }
 /*---------- Gestion des choix vocaux vie Events dispatches -------------*/
 
@@ -238,89 +214,65 @@ const buttonTest = launchBtn.addEventListener('click', openSpeech);
 
 
 
-const postDataToDjango = (data,token_recup) => {
+const postDataToDjango = (data, token_recup) => {
     // ajout 22/02
-    window.removeEventListener("ENVOI", getAudioFile);
+    // window.removeEventListener("ENVOI", getAudioFile);
 
     data = dataToDjango;
+    console.log("data ici ", data)
 
     fetch('/wikispeech/', {
-      method: 'POST', 
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrfToken, 
-      },
-      body: JSON.stringify(data),
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify(data),
     })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log('Success:', data);
-      })
-      .catch((error) => {
-        console.error('Error:', error);
-      });
+        .then(response => response.json())
+        .then(data => {
+            reader = document.getElementById('wikiReaderSound')
+            reader.src = data.fichier_son
+            reader.play()
+            console.log('Success reading file :', data);
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
 };
 
 
-// Code pour récupérer le fichier wav : 
-//Dans votre code JavaScript, utilisez la fonction fetch pour envoyer une requête GET à l'URL de votre vue Django qui retourne le fichier WAV. 
-//Vous pouvez utiliser la méthode blob() pour récupérer le contenu de la réponse sous forme de blob 
-// fetch('url/vers/vue/django/qui/retourne/le/fichier/wav')
-const getAudioFile = () => {
-
-    fetch('/home/fichier_wav/')
-    .then(response => response.blob())
-    .then(blob => {
-        // faire quelque chose avec le blob
-    });
-
-};
+window.addEventListener("DOMContentLoaded", () => {
+    reader = document.getElementById('wikiReaderSound')
+});
 
 
-// Une fois que vous avez récupéré le blob du fichier WAV, vous pouvez le traiter comme vous le souhaitez dans votre code JavaScript. 
-// Par exemple, vous pouvez l'utiliser pour créer un élément audio dans votre page HTML 
-// const audioElement = document.createElement('audio');
-// audioElement.src = URL.createObjectURL(blob);
-// document.body.appendChild(audioElement);
 
+// Gestion de la mise en pause / relance:
+const audio = document.querySelector('audio');
+let isPlaying = false;
 
-// Pour créer un lecteur audio en JavaScript qui permet de lire ou arrêter la lecture du fichier audio, vous pouvez utiliser l'API Web Audio de HTML5. Voici un exemple de code qui vous permettra de créer un lecteur audio simple :
-// Récupération de l'élément audio de la page
-const audioElement = document.getElementById('audio');
-
-// Création du contexte audio
-const audioContext = new AudioContext();
-
-// Déclaration des nœuds audio
-const source = audioContext.createMediaElementSource(audioElement);
-const gainNode = audioContext.createGain();
-const analyser = audioContext.createAnalyser();
-
-// Connexion des nœuds audio
-source.connect(gainNode);
-gainNode.connect(analyser);
-analyser.connect(audioContext.destination);
-
-// Définition des paramètres audio
-gainNode.gain.value = 1;
-
-// Fonction pour démarrer la lecture audio
-function playAudio() {
-    audioElement.play();
+function toggleAudio() {
+    if (!isPlaying) {
+        audio.play();
+    } else {
+        audio.pause();
+    }
+    isPlaying = !isPlaying;
 }
 
-// Fonction pour arrêter la lecture audio
-function stopAudio() {
-    audioElement.pause();
-    audioElement.currentTime = 0;
-}
-
-// Exemple d'utilisation
-playAudio();
-setTimeout(stopAudio, 5000); // Arrêter la lecture après 5 secondes
+document.addEventListener('keydown', event => {
+    if (event.code === 'Space') {
+        toggleAudio();
+    }
+});
 
 
-// <audio controls>
-//     <source src="{{ fichier_wav }}" type="audio/wav"> */}
-// </audio>
+const myButton = document.getElementById('boutton_lancement');
+
+// Ajouter un gestionnaire d'événement sur le clic du bouton
+myButton.addEventListener('click', function () {
+    // Retirer le focus du bouton
+    myButton.blur();
+});
