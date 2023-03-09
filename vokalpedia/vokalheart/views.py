@@ -151,7 +151,7 @@ def wikispeech(request):
         # cela permet de récupérer le souhait de l'utilisateur après avoir entendu le sommaire et ne lui renvoyer que l'article de la page qui l'intéresse.
         else:
 
-            response = wiki_article_processing(user=user,data_prediction=data_prediction,theme=theme,section_traitee=section_traitee,page_py=page_py,html_page=html_page)
+            response = wiki_article_processing(user=user,data_prediction=data_prediction,theme=theme,page_py=page_py,html_page=html_page)
 
             return JsonResponse(response)
         
