@@ -7,7 +7,7 @@ import base64
 from translate import Translator
 
 
-def image_captiong_azure(url):
+def image_captioning_azure(url):
     # Fonction réalisant un appel API au modèle de description d'images de Microsoft Azure
 
     headers = {'Content-Type': 'application/json',
