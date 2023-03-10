@@ -29,14 +29,7 @@ from bs4 import BeautifulSoup
 from random import *
 
 
-
-wiki_wiki = wikipediaapi.Wikipedia('fr')
-wikipedia.set_lang("fr")
-
 User = get_user_model()
-
-
-
 
 
 @ensure_csrf_cookie
@@ -86,7 +79,6 @@ def home(request):
     return render(request, 'vokalheart/home.html')
 
 
-
 # View récupération demande utilisateur pour prédiction
 
 @login_required
@@ -98,12 +90,36 @@ def wikispeech(request):
         data = json.loads(request.body)
         data_prediction = data['prediction']
         theme = data_prediction.split(" ")[1]
-        
+
+        if theme == "aide":
+            pass    
+        else:
+            try:
+                result = re.search(
+                    r"(?<=recherche\s)(.*?)(?=\s(lecture|section|sommaire|image))", data_prediction, re.IGNORECASE)
+                print("LE RESULT", result)
+                if result:
+                    theme_recup = result.group(1)
+                theme_wiki_intermediate = wikipedia.search(theme_recup)
+                print("LE THEME INTERMEDIATE", theme_wiki_intermediate)
+                theme = theme_wiki_intermediate[0]
+                theme = theme.replace(" ", "_").replace("-", "_")
+                print("LE THEME ICI", theme)
+            except Exception as err:
+                print(f"Unexpected {err}, {type(err)}")
+
         try:
+            wiki_wiki = wikipediaapi.Wikipedia('fr')
+            wikipedia.set_lang("fr")
             html_page = wikipedia.page(f'{theme}').html()
             page_py = wiki_wiki.page(f'{theme}')
         except Exception as err:
             print(f"Unexpected {err}, {type(err)}")
+            print("Problème possible avec wikipedia français")
+            wiki_wiki = wikipediaapi.Wikipedia('fr')
+            wikipedia.set_lang("en")
+            html_page = wikipedia.page(f'{theme}').html()
+            page_py = wiki_wiki.page(f'{theme}')
 
         # si l'utilisateur demande à obtenir la lecture de la page complète
         if re.search(r"lecture", data_prediction):
@@ -112,48 +128,65 @@ def wikispeech(request):
 
             return JsonResponse(resultat)
 
-
         # si l'utilisateur demande à obtenir le sommaire complet, on lui retourne le sommaire complet
         elif re.search(r"sommaire", data_prediction):
-            
+
             section_traitee = "sommaire"
-            response = wiki_navigation_processing(user=user,theme=theme,section_traitee=section_traitee,page_py=page_py)
+            response = wiki_navigation_processing(
+                user=user, theme=theme, section_traitee=section_traitee, page_py=page_py)
 
             return JsonResponse(response)
-
 
         # si l'utilisateur demande à obtenir seulement les grandes sections, on ne lui retourne que les grandes sections
         elif re.search(r"section", data_prediction):
-       
+
             section_traitee = "section"
-            response = wiki_navigation_processing(user=user,theme=theme,section_traitee=section_traitee,page_py=page_py)
+            response = wiki_navigation_processing(
+                user=user, theme=theme, section_traitee=section_traitee, page_py=page_py)
 
             return JsonResponse(response)
-        
 
-        # retourne l'aide à l'utilisation de l'application 
+        # retourne l'aide à l'utilisation de l'application
         elif re.search(r"aide", data_prediction):
-            
-            section_traitee = "aide"
-            response = wiki_help_processing(user=user,theme=theme, section_traitee=section_traitee)
-        
-            return JsonResponse(response)
-        
 
-        # retourne la description de trois images aléatoires 
+            section_traitee = "aide"
+            response = wiki_help_processing(
+                user=user, theme=theme, section_traitee=section_traitee)
+
+            return JsonResponse(response)
+
+        # retourne la description de trois images aléatoires
         elif re.search(r"image", data_prediction):
 
             section_traitee = "image"
-            response = wiki_image_processing(user=user,theme=theme,section_traitee=section_traitee)
-        
+            response = wiki_image_processing(
+                user=user, theme=theme, section_traitee=section_traitee)
+
             return JsonResponse(response)
 
         # cela permet de récupérer le souhait de l'utilisateur après avoir entendu le sommaire et ne lui renvoyer que l'article de la page qui l'intéresse.
         else:
 
-            response = wiki_article_processing(user=user,data_prediction=data_prediction,theme=theme,page_py=page_py,html_page=html_page)
+            response = wiki_article_processing(
+                user=user, data_prediction=data_prediction, theme=theme, page_py=page_py, html_page=html_page)
 
             return JsonResponse(response)
-        
+
     else:
         return HttpResponseNotAllowed(['POST'])
+
+
+# data_prediction = "Recherche monaco géographie"
+# import re
+# result = re.search(r"(?<=recherche\s)(.*)", data_prediction, re.IGNORECASE)
+
+# if result:
+#     search_result = result.group(1)
+#     match = re.search(r"\w+\s\w+", search_result)
+#     if match:
+#         print(match.group(0))
+#         test = match.group(0)
+# if len(test.split()) > 1:
+#     test = test.split()[0]
+# if len(test.split()) == 0:
+    
