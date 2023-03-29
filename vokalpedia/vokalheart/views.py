@@ -123,10 +123,10 @@ def wikispeech(request):
 
         # si l'utilisateur demande à obtenir la lecture de la page complète
         if re.search(r"lecture", data_prediction):
+            
+            resultat = {"lecture": page_py.text}
 
-            resultat = {"lecture": json.dumps(page_py.text)}
-
-            return JsonResponse(resultat)
+            return JsonResponse(resultat,safe=False, json_dumps_params={'ensure_ascii': False})
 
         # si l'utilisateur demande à obtenir le sommaire complet, on lui retourne le sommaire complet
         elif re.search(r"sommaire", data_prediction):

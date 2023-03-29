@@ -1,5 +1,5 @@
-const speechRecognition = window.webkitSpeechRecognition;
-const SpeechGrammarList = window.webkitSpeechGrammarList;
+const speechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
 const grammar = "#JSGF V1.0; grammar dictionnaire; public <dictionnaire> = wikipedia.fr | recherche | sommaire | section | je souhaite continuer | je souhaite arrêter | non | oui  ;"
 let recognition = new speechRecognition();
 const speechRecognitionList = new SpeechGrammarList();
@@ -10,8 +10,9 @@ recognition.continuous = true;
 recognition.lang = 'fr-FR';
 let reader
 const launchBtn = document.querySelector('button');
-let outputPred = document.querySelector('.outputPred');
-let outputConfidence = document.querySelector('.outputConfidence');
+let outputPred = document.querySelector('#outputPred');
+let outputConfidence = document.querySelector('#outputConfidence');
+let contentLecture = document.querySelector('#contentLecture');
 
 let tabSpeech = [];
 let global_prediction = "";
@@ -88,6 +89,7 @@ const openSpeech = () => {
     window.addEventListener('FIN_INTRO', getSpeechOnLive);
     window.addEventListener("tabSpeechResultWithRegex", getPredSpeech);
     window.addEventListener("tabSpeechResult", getPredSpeech);
+    launchBtn.addEventListener('click', stopAndResetAudio);
     // ajout 21/02:
     window.addEventListener("ENVOI", postDataToDjango);
 
@@ -214,9 +216,38 @@ const buttonTest = launchBtn.addEventListener('click', openSpeech);
 
 
 
+// const postDataToDjango = (data, token_recup) => {
+//     // ajout 22/02
+//     // window.removeEventListener("ENVOI", getAudioFile);
+
+//     data = dataToDjango;
+//     console.log("data ici ", data)
+
+//     fetch('/wikispeech/', {
+//         method: 'POST',
+//         credentials: 'include',
+//         headers: {
+//             'Content-Type': 'application/json',
+//             'X-CSRFToken': csrfToken,
+//         },
+//         body: JSON.stringify(data),
+//     })
+//         .then(response => response.json())
+//         .then(data => {
+//             reader = document.getElementById('wikiReaderSound')
+//             reader.src = data.fichier_son
+//             reader.play()
+//             console.log('Success reading file :', data);
+//         })
+//         .catch((error) => {
+//             console.error('Error:', error);
+//         });
+// };
+
+
+
+
 const postDataToDjango = (data, token_recup) => {
-    // ajout 22/02
-    // window.removeEventListener("ENVOI", getAudioFile);
 
     data = dataToDjango;
     console.log("data ici ", data)
@@ -232,19 +263,71 @@ const postDataToDjango = (data, token_recup) => {
     })
         .then(response => response.json())
         .then(data => {
-            reader = document.getElementById('wikiReaderSound')
-            reader.src = data.fichier_son
-            reader.play()
-            console.log('Success reading file :', data);
+            let reader = document.getElementById('wikiReaderSound');
+            let speech = new SpeechSynthesisUtterance();
+            if (data.fichier_son && data.fichier_son.startsWith('/media')) {
+                reader.src = data.fichier_son;
+                reader.play();
+                console.log('Success playing audio file:', data.fichier_son);
+            } else {
+                speech.text = data["lecture"];
+                speech.lang = "fr";
+                voices = window.speechSynthesis.getVoices();
+                speech.voice = voices[0];
+                window.speechSynthesis.speak(speech);
+                contentLecture.textContent = data["lecture"];
+                console.log('Success speaking text:', data["lecture"]);
+            }
         })
-        .catch((error) => {
-            console.error('Error:', error);
-        });
+        .catch(error => console.error('Error:', error));
 };
+
 
 
 window.addEventListener("DOMContentLoaded", () => {
     reader = document.getElementById('wikiReaderSound')
+});
+
+
+
+// // Gestion de la mise en pause / relance:
+// const audio = document.querySelector('audio');
+// let isPlaying = false;
+
+// function toggleAudio() {
+//     if (!isPlaying) {
+//         audio.play();
+//     } else {
+//         audio.pause();
+//     }
+//     isPlaying = !isPlaying;
+// }
+
+// document.addEventListener('keydown', event => {
+//     if (event.code === 'Space') {
+//         toggleAudio();
+//     }
+// });
+
+
+// const myButton = document.getElementById('boutton_lancement');
+
+// // Ajouter un gestionnaire d'événement sur le clic du bouton
+// myButton.addEventListener('click', function () {
+//     // Retirer le focus du bouton
+//     myButton.blur();
+// });
+const refreshButton = document.getElementById('refreshButton');
+
+refreshButton.addEventListener('click', () => {
+    location.reload(); // Rafraîchir la page
+});
+
+
+const stopButton = document.getElementById('stopButton');
+
+stopButton.addEventListener('click', () => {
+    stopAndResetAudio(); // Arrêter et réinitialiser l'audio
 });
 
 
@@ -256,23 +339,53 @@ let isPlaying = false;
 function toggleAudio() {
     if (!isPlaying) {
         audio.play();
+        window.speechSynthesis.resume();
     } else {
         audio.pause();
+        window.speechSynthesis.pause();
     }
     isPlaying = !isPlaying;
 }
 
+function resetAudio() {
+    if (audio.src) {
+        audio.currentTime = 0;
+    }
+    window.speechSynthesis.cancel();
+    isPlaying = false;
+}
+
+function stopAndResetAudio() {
+    audio.pause();
+    audio.currentTime = 0;
+    window.speechSynthesis.cancel();
+    isPlaying = false;
+}
+
 document.addEventListener('keydown', event => {
     if (event.code === 'Space') {
+        event.preventDefault(); // Empêcher le comportement par défaut de la touche "Espace"
         toggleAudio();
+    }
+    if (event.code === 'AltLeft' || event.code === 'AltRight') {
+        event.preventDefault(); // Empêcher le comportement par défaut de la touche "Alt"
+        resetAudio();
+    }
+    if (event.code === 'Escape') {
+        event.preventDefault(); // Empêcher le comportement par défaut de la touche "Escape"
+        stopAndResetAudio();
     }
 });
 
-
-const myButton = document.getElementById('boutton_lancement');
+const myButton = document.getElementById('launchButton');
 
 // Ajouter un gestionnaire d'événement sur le clic du bouton
 myButton.addEventListener('click', function () {
     // Retirer le focus du bouton
     myButton.blur();
 });
+
+
+
+
+

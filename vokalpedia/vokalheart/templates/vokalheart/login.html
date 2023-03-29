@@ -1,9 +1,42 @@
-{% extends 'base.html' %}
-{% block content %}
-    <form method="post">
-        {{ form.as_p }}
-        {% csrf_token %}
-        <button type="submit" >Se connecter</button>
+{% extends 'base.html' %} {% block content %}
+
+<div class="container_login">
+  <div class="container_login_formulaire">
+    <form id="connexion" method="post">
+      {{ form.as_p }} {% csrf_token %}
+      <button id="button_connexion" type="submit">Se connecter</button>
     </form>
-    <p>Pas encore membre ? <a href="{% url 'signup' %}">Inscrivez-vous maintenant !</a></p>
-{% endblock content %}
+  </div>
+  <div class="container_login_inscription">
+    <p>
+      Pas encore membre ?
+      <a href="{% url 'signup' %}" id="lien_inscription"
+        >Inscrivez-vous maintenant !</a
+      >
+    </p>
+  </div>
+</div>
+{% endblock content %} {% comment %} {% extends 'base.html' %} {% block content
+%}
+<div class="container_login">
+  <div class="container_login_formulaire">
+    <form id="connexion" method="post">
+      {% csrf_token %} {% for field in form %}
+      <div class="form-group">
+        <label class="form-label" for="{{ field.auto_id }}"
+          >{{ field.label }}</label
+        >
+        {{ field }}
+      </div>
+      {% endfor %}
+      <button id="button_connexion" type="submit">Se connecter</button>
+    </form>
+  </div>
+  <div class="container_login_inscription">
+    <p>
+      Pas encore membre ?
+      <a href="{% url 'signup' %}">Inscrivez-vous maintenant !</a>
+    </p>
+  </div>
+</div>
+{% endblock content %} {% endcomment %}

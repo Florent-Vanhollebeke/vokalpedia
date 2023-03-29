@@ -11,7 +11,7 @@ def image_captioning_azure(url):
     # Fonction réalisant un appel API au modèle de description d'images de Microsoft Azure
 
     headers = {'Content-Type': 'application/json',
-               'Ocp-Apim-Subscription-Key': ''}
+               'Ocp-Apim-Subscription-Key': 'f5aae19eb1024e39a4ed30ed514779d9'}
 
     body = json.dumps({"url": url})
 

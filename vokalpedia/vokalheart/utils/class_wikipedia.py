@@ -12,11 +12,19 @@ class Navigation_sommaire_wikipedia:
             liste_reduite_sommaire_h2.append(s.title)
         return liste_reduite_sommaire_h2
 
+    # def print_sections_complet(self, sections, level=0):
+    #     liste_complete_sommaire = []
+    #     for s in sections:
+    #         liste_complete_sommaire.append(s.title)
+    #         self.print_sections_complet(s.sections)
+    #     return liste_complete_sommaire
     def print_sections_complet(self, sections, level=0):
         liste_complete_sommaire = []
         for s in sections:
             liste_complete_sommaire.append(s.title)
-            self.print_sections_complet(s.sections)
+            if s.sections:
+                liste_complete_sommaire.extend(
+                    self.print_sections_complet(s.sections, level + 1))
         return liste_complete_sommaire
 
     def nav_wiki(self):
@@ -24,13 +32,17 @@ class Navigation_sommaire_wikipedia:
         try:
             if self.choix_section == "sommaire":
                 sommaire = self.print_sections_complet(self.sections)
+                print(sommaire)
             elif self.choix_section == "section":
                 sommaire = self.print_sections_h2(self.sections)
             else:
-                print(
+                raise ValueError(
                     "Erreur dans le fonctionnement de la classe Navigation_sommaire_wikipedia.")
+            # avant print au lieu de raise
         except Exception as err:
-            print(f"Unexpected {err}, {type(err)}")
+            # print(f"Unexpected {err}, {type(err)}")
+            raise ValueError(
+                "Erreur dans le fonctionnement de la classe Navigation_sommaire_wikipedia.")
         sommaire = "".join(str(sommaire))
         self.sommaire = sommaire
 
