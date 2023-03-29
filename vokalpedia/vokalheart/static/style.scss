@@ -369,3 +369,110 @@ main {
 .element_boutton {
     margin-top: -15px;
 }
+
+
+
+/* Ecran 17 pouces */
+
+@media screen and (max-width: 1366px) {
+    h1 {
+      font-size: 1.6em;
+    }
+    input {
+      width: 70%;
+    }
+    #btn_validation_inscription,
+    #button_connexion {
+      font-size: 0.7rem;
+      padding: 0.5rem 1rem;
+    }
+    label {
+      font-size: 0.7rem;
+    }
+    #launchButton,
+    #refreshButton,
+    #stopButton {
+      font-size: 0.8rem;
+      padding: 0.5rem 1rem;
+    }
+    header {
+      padding: 0.5rem;
+    }
+    #base_connexion {
+      padding: 0.8rem 0.5rem;
+      width: 80%;
+      font-size: 0.8rem;
+    }
+    main {
+      margin-top: 2rem;
+    }
+  }
+  
+  @media screen and (max-width: 1024px) {
+    h1 {
+      font-size: 1.3em;
+    }
+    input {
+      width: 80%;
+    }
+    #btn_validation_inscription,
+    #button_connexion {
+      font-size: 0.6rem;
+      padding: 0.4rem 0.8rem;
+    }
+    label {
+      font-size: 0.6rem;
+    }
+    #launchButton,
+    #refreshButton,
+    #stopButton {
+      font-size: 0.7rem;
+      padding: 0.4rem 0.8rem;
+    }
+    header {
+      padding: 0.5rem;
+    }
+    #base_connexion {
+      padding: 0.3rem 0.1rem;
+      width: 90%;
+      font-size: 0.7rem;
+    }
+    main {
+      margin-top: -100px;
+    }
+  }
+  
+  @media screen and (max-width: 768px) {
+    h1 {
+      font-size: 1em;
+    }
+    input {
+      width: 90%;
+    }
+    label {
+      font-size: 0.5rem;
+      margin-top: 3px;
+    }
+    #btn_validation_inscription,
+    #button_connexion {
+      font-size: 0.5rem;
+      padding: 0.4rem 0.6rem;
+    }
+    #launchButton,
+    #refreshButton,
+    #stopButton {
+      font-size: 0.6rem;
+      padding: 0.4rem 0.6rem;
+    }
+    header {
+      padding: 0.3rem;
+    }
+    #base_connexion {
+      padding: 0.5rem 0.2rem;
+      width: 100%;
+      font-size: 0.6rem;
+    }
+    main {
+      margin-top: 1rem;
+    }
+  }
